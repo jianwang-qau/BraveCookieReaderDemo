@@ -14,7 +14,7 @@ namespace BraveBrowserCookieReaderDemo
             foreach (var cookie in cookies)
             {
                 Console.WriteLine($"Cookie Name: {cookie.Item1}");
-                Console.WriteLine($"Cookie Name: {cookie.Item2}");
+                Console.WriteLine($"Cookie Value: {cookie.Item2}");
             }
         }
     }

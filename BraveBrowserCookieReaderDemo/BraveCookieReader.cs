@@ -28,28 +28,32 @@ namespace BraveBrowserCookieReaderDemo
 
             // Big thanks to https://stackoverflow.com/a/60611673/6481581 for answering how Chrome 80 and up changed the way cookies are encrypted.
 
-            string encKey = File.ReadAllText(System.Environment.GetEnvironmentVariable("LOCALAPPDATA") + @"\BraveSoftware\Brave-Browser\User Data\Local State");
+            var filePath = Environment.GetEnvironmentVariable("LOCALAPPDATA")
+                        + @"\Google\Chrome\User Data\Local State";
+            string encKey = File.ReadAllText(filePath);
             encKey = JObject.Parse(encKey)["os_crypt"]["encrypted_key"].ToString();
-            var decodedKey = System.Security.Cryptography.ProtectedData.Unprotect(Convert.FromBase64String(encKey).Skip(5).ToArray(), null, System.Security.Cryptography.DataProtectionScope.LocalMachine);
+            var decodedKey = ProtectedData.Unprotect(Convert.FromBase64String(encKey).Skip(5).ToArray(), null, DataProtectionScope.LocalMachine);
 
             foreach (var cookie in cookies)
             {
-
                 var data = cookie.EncryptedValue;
-
                 var decodedValue = _decryptWithKey(data, decodedKey, 3);
-
-
                 yield return Tuple.Create(cookie.Name, decodedValue);
             }
         }
-
 
         private string _decryptWithKey(byte[] message, byte[] key, int nonSecretPayloadLength)
         {
             const int KEY_BIT_SIZE = 256;
             const int MAC_BIT_SIZE = 128;
             const int NONCE_BIT_SIZE = 96;
+
+            // data protected with DPAPI
+            if (message[0] == 0x01 && message[1] == 0x00 && message[2] == 0x00 && message[3] == 0x00)
+            {
+                var decryptedData = ProtectedData.Unprotect(message, null, DataProtectionScope.CurrentUser);
+                return Encoding.Default.GetString(decryptedData);
+            }
 
             if (key == null || key.Length != KEY_BIT_SIZE / 8)
                 throw new ArgumentException(String.Format("Key needs to be {0} bit!", KEY_BIT_SIZE), "key");
